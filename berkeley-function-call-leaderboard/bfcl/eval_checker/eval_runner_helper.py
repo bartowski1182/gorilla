@@ -240,7 +240,7 @@ def generate_leaderboard_csv(
         data_non_live.append(
             [
                 "N/A",
-                MODEL_METADATA_MAPPING[model_name_escaped][0],
+                get_model_metadata(model_name_escaped)[0],
                 overall_accuracy_non_live["display_accuracy"],
                 summary_ast_non_live["display_accuracy"],
                 simple_ast_non_live["display_accuracy"],
@@ -285,7 +285,7 @@ def generate_leaderboard_csv(
         data_live.append(
             [
                 "N/A",
-                MODEL_METADATA_MAPPING[model_name_escaped][0],
+                get_model_metadata(model_name_escaped)[0],
                 overall_accuracy_live["display_accuracy"],
                 summary_ast_live["display_accuracy"],
                 python_simple_ast_live["display_accuracy"],
@@ -315,7 +315,7 @@ def generate_leaderboard_csv(
         data_multi_turn.append(
             [
                 "N/A",
-                MODEL_METADATA_MAPPING[model_name_escaped][0],
+                get_model_metadata(model_name_escaped)[0],
                 overall_accuracy_multi_turn["display_accuracy"],
                 multi_turn_base["display_accuracy"],
                 multi_turn_miss_func["display_accuracy"],
@@ -346,8 +346,8 @@ def generate_leaderboard_csv(
             [
                 "N/A",
                 total_overall_accuracy["display_accuracy"],
-                MODEL_METADATA_MAPPING[model_name_escaped][0],
-                MODEL_METADATA_MAPPING[model_name_escaped][1],
+                get_model_metadata(model_name_escaped)[0],
+                get_model_metadata(model_name_escaped)[1],
                 cost,
                 latency_mean,
                 latency_std,
@@ -369,8 +369,8 @@ def generate_leaderboard_csv(
                 multi_turn_long_context["display_accuracy"],
                 total_relevance["display_accuracy"],
                 total_irrelevance["display_accuracy"],
-                MODEL_METADATA_MAPPING[model_name_escaped][2],
-                MODEL_METADATA_MAPPING[model_name_escaped][3],
+                get_model_metadata(model_name_escaped)[2],
+                get_model_metadata(model_name_escaped)[3],
             ]
         )
 

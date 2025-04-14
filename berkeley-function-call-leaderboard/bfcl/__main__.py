@@ -134,6 +134,11 @@ def generate(
         "--run-ids",
         help="If true, also run the test entry mentioned in the test_case_ids_to_generate.json file, in addition to the --test_category argument.",
     ),
+    is_fc_model: bool = typer.Option(
+        False,
+        "--is-fc-model",
+        help="If true, the model is a function calling model.",
+    ),
 ):
     """
     Generate the LLM response for one or more models on a test-category (same as openfunctions_evaluation.py).
@@ -153,6 +158,7 @@ def generate(
         result_dir=result_dir,
         allow_overwrite=allow_overwrite,
         run_ids=run_ids,
+        is_fc_model=is_fc_model,
     )
     load_dotenv(dotenv_path=DOTENV_PATH, verbose=True, override=True)  # Load the .env file
     generation_main(args)
@@ -216,10 +222,9 @@ def results(
 
 @cli.command()
 def evaluate(
-    model: List[str] = typer.Option(
+    model: str = typer.Option(
         None, 
-        help="A list of model names to evaluate.",
-        callback=handle_multiple_input
+        help="The name of the model to evaluate.",
     ),
     test_category: List[str] = typer.Option(
         ["all"], 
@@ -236,13 +241,18 @@ def evaluate(
         "--score-dir",
         help="Relative path to the evaluation score folder, if different from the default; Path should be relative to the `berkeley-function-call-leaderboard` root folder",
     ),
+    is_fc_model: bool = typer.Option(
+        False,
+        "--is-fc-model",
+        help="If true, the model is a function calling model.",
+    ),
 ):
     """
     Evaluate results from run of one or more models on a test-category (same as eval_runner.py).
     """
 
     load_dotenv(dotenv_path=DOTENV_PATH, verbose=True, override=True)  # Load the .env file
-    evaluation_main(model, test_category, result_dir, score_dir)
+    evaluation_main(model, test_category, result_dir, score_dir, is_fc_model)
 
 
 @cli.command()

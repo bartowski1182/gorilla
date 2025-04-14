@@ -59,8 +59,13 @@ def get_args():
     return args
 
 
-def build_handler(model_name, temperature):
-    handler = HANDLER_MAP[model_name](model_name, temperature)
+def build_handler(model_name, temperature, is_fc_model=False):
+    if model_name.startswith("custom/"):
+        handler = HANDLER_MAP["custom"](model_name, temperature)
+        handler.is_fc_model = is_fc_model
+    else:
+        handler = HANDLER_MAP[model_name](model_name, temperature)
+        handler.is_fc_model = is_fc_model
     return handler
 
 
@@ -216,7 +221,7 @@ def multi_threaded_inference(handler, test_case, include_input_log, exclude_stat
 
 def generate_results(args, model_name, test_cases_total):
     update_mode = args.allow_overwrite
-    handler = build_handler(model_name, args.temperature)
+    handler = build_handler(model_name, args.temperature, args.is_fc_model)
 
     if handler.model_style == ModelStyle.OSSMODEL:
         # batch_inference will handle the writing of results

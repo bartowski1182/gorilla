@@ -1,4 +1,5 @@
 import argparse
+from typing import List
 
 from bfcl.constants.category_mapping import (
     TEST_COLLECTION_MAPPING,
@@ -26,10 +27,18 @@ from dotenv import load_dotenv
 from tqdm import tqdm
 
 
-def get_handler(model_name):
-    return HANDLER_MAP[model_name](
-        model_name, temperature=0
-    )  # Temperature doesn't matter for evaluation
+def get_handler(model_name: str, custom_model: bool, is_fc_model: bool = False):
+    if custom_model:
+        handler = HANDLER_MAP["custom"](
+            model_name, temperature=0
+        )  # Temperature doesn't matter for evaluation
+        handler.is_fc_model = is_fc_model
+        return handler
+    else:
+        handler = HANDLER_MAP[model_name](
+            model_name, temperature=0
+        )  # Temperature doesn't matter for evaluation
+        return handler
 
 
 def multi_turn_runner(
@@ -343,7 +352,8 @@ def ast_file_runner(
 
 
 #### Main runner function ####
-def runner(model_names, test_categories, result_dir, score_dir):
+def runner(model_name: str, custom_model: bool, test_categories: List[str], result_dir: Path, score_dir: Path, is_fc_model=False):
+
 
     # State udpated by each eval subtask.
     state = dict(
@@ -352,47 +362,41 @@ def runner(model_names, test_categories, result_dir, score_dir):
         # and values as a dictionary with accuracy and total count.
         leaderboard_table={},
     )
+    
+    model_result_dir = result_dir / model_name
 
-    # Get a list of all entries in the folder
-    entries = result_dir.iterdir()
+    if not model_result_dir.exists():
+        raise FileNotFoundError(f"The results directory {model_result_dir} does not exist. Please check the model name and try again.")
 
-    # Filter out the subdirectories
-    subdirs = [entry for entry in entries if entry.is_dir()]
+    model_name_escaped = model_name.replace("_", "/")
 
-    # Traverse each subdirectory
-    for subdir in tqdm(subdirs, desc="Number of models evaluated"):
+    print(f"🦍 Model: {model_name}")
 
-        model_name = subdir.relative_to(result_dir).name
-        if model_names is not None and model_name not in model_names:
+    # Find and process all JSON files in the subdirectory
+    for model_result_json in model_result_dir.glob("*.json"):
+        test_category = extract_test_category(model_result_json)
+        if test_category not in test_categories:
             continue
 
-        model_name_escaped = model_name.replace("_", "/")
+        handler = get_handler(model_name_escaped, custom_model, is_fc_model=is_fc_model)
 
-        print(f"🦍 Model: {model_name}")
+        # We don't evaluate chatable and SQL models in our current
+        # leaderboard.
+        if is_chatable(test_category) or is_sql(test_category):
+            continue
 
-        # Find and process all JSON files in the subdirectory
-        for model_result_json in subdir.glob("*.json"):
-            test_category = extract_test_category(model_result_json)
-            if test_category not in test_categories:
-                continue
+        model_result = load_file(model_result_json, sort_by_id=True)
 
-            handler = get_handler(model_name_escaped)
+        state = evaluate_task(
+            test_category,
+            result_dir,
+            score_dir,
+            model_result,
+            model_name,
+            handler,
+            state,
+        )
 
-            # We don't evaluate the following categories in the current iteration of the benchmark
-            if is_chatable(test_category) or is_sql(test_category) or is_executable(test_category):
-                continue
-
-            model_result = load_file(model_result_json, sort_by_id=True)
-
-            state = evaluate_task(
-                test_category,
-                result_dir,
-                score_dir,
-                model_result,
-                model_name,
-                handler,
-                state,
-            )
 
     # This function reads all the score files from local folder and updates the
     # leaderboard table. This is helpful when you only want to run the
@@ -400,7 +404,7 @@ def runner(model_names, test_categories, result_dir, score_dir):
     update_leaderboard_table_with_local_score_file(state["leaderboard_table"], score_dir)
     # Write the leaderboard table to a file
     generate_leaderboard_csv(
-        state["leaderboard_table"], score_dir, model_names, test_categories
+        state["leaderboard_table"], score_dir, [model_name], test_categories
     )
 
 
@@ -468,7 +472,7 @@ def evaluate_task(
     return state
 
 
-def main(model, test_categories, result_dir, score_dir):
+def main(model_name: str, test_categories: List[str], result_dir: str = None, score_dir: str = None, is_fc_model: bool = False):
     if result_dir is None:
         result_dir = RESULT_PATH
     else:
@@ -484,17 +488,16 @@ def main(model, test_categories, result_dir, score_dir):
 
     _, all_test_categories = parse_test_category_argument(test_categories)
 
-    model_names = None
-    if model:
-        model_names = []
-        for model_name in model:
-            # Runner takes in the model name that contains "_", instead of "/", for the sake of file path issues.
-            # This is differnet than the model name format that the generation script "openfunctions_evaluation.py" takes in (where the name contains "/").
-            # We patch it here to avoid confusing the user.
-            model_names.append(model_name.replace("/", "_"))
+    if model_name.startswith("custom/"):
+        model_name = model_name.split("/")[1]
+        custom_model = True
+    else:
+        custom_model = False
+
+    model_name = model_name.replace("/", "_")
 
     # Driver function to run the evaluation for all categories involved.
-    runner(model_names, all_test_categories, result_dir, score_dir)
+    runner(model_name, custom_model, all_test_categories, result_dir, score_dir, is_fc_model)
 
     print(
         f"🏁 Evaluation completed. See {score_dir / 'data_overall.csv'} for overall evaluation results on BFCL V3."
@@ -530,6 +533,12 @@ if __name__ == "__main__":
         type=str,
         help="Path to the folder where the evaluation score files will be stored; relative to the `berkeley-function-call-leaderboard` root folder",
     )
+    parser.add_argument(
+        "--is-fc-model",
+        action="store_true",
+        default=False,
+        help="If true, the model is a function calling model.",
+    )
 
     args = parser.parse_args()
 
@@ -539,4 +548,5 @@ if __name__ == "__main__":
         args.test_category,
         args.result_dir,
         args.score_dir,
+        args.is_fc_model,
     )

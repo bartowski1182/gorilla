@@ -986,6 +986,12 @@ MODEL_METADATA_MAPPING = {
     ]
 }
 
+def get_model_metadata(model_name):
+    if model_name in MODEL_METADATA_MAPPING:
+        return MODEL_METADATA_MAPPING[model_name]
+    else:
+        return [f"{model_name}", "Custom model", "Custom model", "Custom model"]
+
 INPUT_PRICE_PER_MILLION_TOKEN = {
     "claude-3-opus-20240229-FC": 15,
     "claude-3-opus-20240229": 15,
