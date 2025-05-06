@@ -103,6 +103,7 @@ api_inference_handler_map = {
     # "yi-large-fc": YiHandler,  #  Their API is under maintenance, and will not be back online in the near future
     "palmyra-x-004": WriterHandler,
     "grok-beta": GrokHandler,
+    "custom": OpenAIHandler,
 }
 
 # Inference through local hosting
