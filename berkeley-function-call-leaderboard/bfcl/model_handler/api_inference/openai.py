@@ -19,7 +19,10 @@ from openai import OpenAI, RateLimitError
 
 
 class OpenAIHandler(BaseHandler):
-    def __init__(self, model_name, temperature) -> None:
+    def __init__(self, model_name: str, temperature: float) -> None:
+        if model_name.startswith("custom/"):
+            model_name = model_name.lstrip("custom/")
+
         super().__init__(model_name, temperature)
         self.model_style = ModelStyle.OpenAI
         self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
