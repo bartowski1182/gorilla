@@ -489,7 +489,7 @@ def main(model_name: str, test_categories: List[str], result_dir: str = None, sc
     _, all_test_categories = parse_test_category_argument(test_categories)
 
     if model_name.startswith("custom/"):
-        model_name = model_name.split("/")[1]
+        model_name = model_name.replace("custom/", "")
         custom_model = True
     else:
         custom_model = False
